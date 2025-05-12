@@ -1,0 +1,85 @@
+services:
+  postgres:
+    container_name: ms_pg_sql
+    image: postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - PGDATA=/var/lib/postgresql/data
+    volumes:
+      - postgres_ecommerce:/var/lib/postgresql/data
+    ports:
+      - "5430:5430"
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: ms_pagadmin
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-pgadmin@pgadmin.org}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-admin}
+      - PGAMDIN_CONFIG_SERVER_MODE=${PGAMDIN_CONFIG_SERVER_MODE:-False}
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    ports:
+      - 5050:80
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  mongodb:
+    container_name: ms_mongo_db
+    image: mongo:6.0.14
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    ports:
+      - "27010:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - microservices-net
+    healthcheck:
+      test: mongosh -u admin -p admin --eval "db.adminCommand('ping')" --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-express:
+    container_name: ms_mongo_express
+    image: mongo-express:1.0.2
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      ME_CONFIG_MONGODB_URL: "mongodb://admin:admin@mongodb:27017/admin?authSource=admin"
+      ME_CONFIG_BASICAUTH_USERNAME: "admin"
+      ME_CONFIG_BASICAUTH_PASSWORD: "123456"
+      ME_CONFIG_SITE_COOKIESECRET: "k8Fj2nQ9pXyL3vG7bR5tW6zH4mK1cN8"
+      ME_CONFIG_SITE_SESSIONSECRET: "P5sT9wY2qV4xJ7dR1uM3oZ6lK8nB0vC"
+    ports:
+      - "8081:8081"
+    networks:
+      - microservices-net
+
+  mail-dev:
+    container_name: ms_mail_dev
+    image: maildev/maildev
+    ports:
+      - 1080:1080
+      - 1025:1025
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+networks:
+  microservices-net:
+    name: microservices-net
+    driver: bridge
+
+volumes:
+  postgres_ecommerce:
+  pgadmin:
+  mongo_data:
